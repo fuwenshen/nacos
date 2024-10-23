@@ -84,6 +84,7 @@ public class ServiceStorage {
             return result;
         }
         Service singleton = ServiceManager.getInstance().getSingleton(service);
+        // hosts属性就是instance集合，所以核心看getAllInstancesFromIndex()关键方法
         result.setHosts(getAllInstancesFromIndex(singleton));
         serviceDataIndexes.put(singleton, result);
         return result;
@@ -106,7 +107,9 @@ public class ServiceStorage {
     private List<Instance> getAllInstancesFromIndex(Service service) {
         Set<Instance> result = new HashSet<>();
         Set<String> clusters = new HashSet<>();
+        // 获取当前服务的所有实列信息（client Id）
         for (String each : serviceIndexesManager.getAllClientsRegisteredService(service)) {
+            // 从client对象中取出instance封装之后的InstancePublishInfo对象
             Optional<InstancePublishInfo> instancePublishInfo = getInstanceInfo(each, service);
             if (instancePublishInfo.isPresent()) {
                 InstancePublishInfo publishInfo = instancePublishInfo.get();
@@ -116,6 +119,7 @@ public class ServiceStorage {
                     List<Instance> batchInstance = parseBatchInstance(service, batchInstancePublishInfo, clusters);
                     result.addAll(batchInstance);
                 } else {
+                    // 得到instance对象，添加进集合
                     Instance instance = parseInstance(service, instancePublishInfo.get());
                     result.add(instance);
                     clusters.add(instance.getClusterName());

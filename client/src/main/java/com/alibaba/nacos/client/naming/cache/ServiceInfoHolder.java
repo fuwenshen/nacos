@@ -95,8 +95,10 @@ public class ServiceInfoHolder implements Closeable {
     }
     
     public ServiceInfo getServiceInfo(final String serviceName, final String groupName, final String clusters) {
+        // groupName + @@ + serviceName
         String groupedServiceName = NamingUtils.getGroupedName(serviceName, groupName);
         String key = ServiceInfo.getKey(groupedServiceName, clusters);
+        // 根据这个key去本地缓存serviceInfoMap中去找
         return serviceInfoMap.get(key);
     }
     

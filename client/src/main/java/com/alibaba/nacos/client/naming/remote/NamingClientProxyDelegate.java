@@ -165,11 +165,15 @@ public class NamingClientProxyDelegate implements NamingClientProxy {
         NAMING_LOGGER.info("[SUBSCRIBE-SERVICE] service:{}, group:{}, clusters:{} ", serviceName, groupName, clusters);
         String serviceNameWithGroup = NamingUtils.getGroupedName(serviceName, groupName);
         String serviceKey = ServiceInfo.getKey(serviceNameWithGroup, clusters);
+        // 添加一个延迟1s执行任务，该任务会定期想NacosServer端拉取服务实例信息
+        // 该定时任务和Nacos1.X版本一样，没什么改动，最多就是http变为了grpc
         serviceInfoUpdateService.scheduleUpdateIfAbsent(serviceName, groupName, clusters);
         ServiceInfo result = serviceInfoHolder.getServiceInfoMap().get(serviceKey);
+        // 如果没有就发送grpc请求，因为上面的延迟任务会延迟1s执行，所以这里从本地缓存中取不到数据
         if (null == result || !isSubscribed(serviceName, groupName, clusters)) {
             result = grpcClientProxy.subscribe(serviceName, groupName, clusters);
         }
+        // 向NacosServer发送一个grpc请求，拉取服务实例列表信息，
         serviceInfoHolder.processServiceInfo(result);
         return result;
     }
@@ -193,6 +197,8 @@ public class NamingClientProxyDelegate implements NamingClientProxy {
     }
     
     private NamingClientProxy getExecuteClientProxy(Instance instance) {
+        //判断当前要注册的实例是否为临时实例，如果是临时实例就使用grpc的方式请求NacosService，如果是持久化实例就还是使用http的方式请求，
+        // 一般情况下都是临时实例，所以会采用grpc的方式调用
         if (instance.isEphemeral() || grpcClientProxy.isAbilitySupportedByServer(AbilityKey.SERVER_SUPPORT_PERSISTENT_INSTANCE_BY_GRPC)) {
             return grpcClientProxy;
         }

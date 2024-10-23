@@ -41,6 +41,7 @@ public class NamingPushRequestHandler implements ServerRequestHandler {
     public Response requestReply(Request request, Connection connection) {
         if (request instanceof NotifySubscriberRequest) {
             NotifySubscriberRequest notifyRequest = (NotifySubscriberRequest) request;
+            // 更新客户端服务实例本地缓存serviceInfoMap集合   processServiceInfo()方法在服务发现流程中经常出现
             serviceInfoHolder.processServiceInfo(notifyRequest.getServiceInfo());
             return new NotifySubscriberResponse();
         }

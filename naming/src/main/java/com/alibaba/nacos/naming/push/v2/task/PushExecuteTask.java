@@ -55,9 +55,11 @@ public class PushExecuteTask extends AbstractExecuteTask {
     
     @Override
     public void run() {
+        // 将封装了service信息的wrapper推送给客户端
         try {
             PushDataWrapper wrapper = generatePushData();
             ClientManager clientManager = delayTaskEngine.getClientManager();
+            // 根据 delayTask.isPushToAll() 来判断是否要推送当前服务的所有订阅者，返回所有订阅者或某一个订阅者
             for (String each : getTargetClientIds()) {
                 Client client = clientManager.getClient(each);
                 if (null == client) {
@@ -69,6 +71,7 @@ public class PushExecuteTask extends AbstractExecuteTask {
                 if (subscriber == null) {
                     continue;
                 }
+                // 发送grpc请求 推送给客户端
                 delayTaskEngine.getPushExecutor().doPushWithCallback(each, subscriber, wrapper,
                         new ServicePushCallback(each, subscriber, wrapper.getOriginalData(), delayTask.isPushToAll()));
             }

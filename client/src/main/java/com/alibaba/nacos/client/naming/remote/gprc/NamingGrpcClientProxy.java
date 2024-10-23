@@ -141,6 +141,7 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
     
     private void registerServiceForEphemeral(String serviceName, String groupName, Instance instance)
             throws NacosException {
+        // 构建的一个InstanceRedoData对象，存入一个registeredInstances集合中
         redoService.cacheInstanceForRedo(serviceName, groupName, instance);
         doRegisterService(serviceName, groupName, instance);
     }
@@ -245,9 +246,12 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
      * @throws NacosException nacos exception
      */
     public void doRegisterService(String serviceName, String groupName, Instance instance) throws NacosException {
+        // NacosClient这边会封装为一个请求对象，
+        // 我们这里可以利用InstanceRequest这个类名去NacosServer端找该调用接口具体实现位置，一般的命名就是后面加一个Handler进行拼接
         InstanceRequest request = new InstanceRequest(namespaceId, serviceName, groupName,
                 NamingRemoteConstants.REGISTER_INSTANCE, instance);
         requestToServer(request, Response.class);
+        // 这里就从registeredInstances集合中取出上面构建的InstanceRedoData对象，并把它的registered属性设置为true
         redoService.instanceRegistered(serviceName, groupName);
     }
     
@@ -444,6 +448,7 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
         try {
             request.putAllHeader(
                     getSecurityHeaders(request.getNamespace(), request.getGroupName(), request.getServiceName()));
+            // 通过rpcClient发送请求，更具体的实现就没必要去看了，都是grpc相关的内容了
             response = requestTimeout < 0 ? rpcClient.request(request) : rpcClient.request(request, requestTimeout);
             if (ResponseCode.SUCCESS.getCode() != response.getResultCode()) {
                 throw new NacosException(response.getErrorCode(), response.getMessage());

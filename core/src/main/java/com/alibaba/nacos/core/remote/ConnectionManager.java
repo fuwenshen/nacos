@@ -145,6 +145,7 @@ public class ConnectionManager {
      * @param connectionId connectionId.
      */
     public synchronized void unregister(String connectionId) {
+        // 将连接中connections集合中移除
         Connection remove = this.connections.remove(connectionId);
         if (remove != null) {
             String clientIp = remove.getMetaInfo().clientIp;
@@ -157,6 +158,7 @@ public class ConnectionManager {
             }
             remove.close();
             LOGGER.info("[{}]Connection unregistered successfully. ", connectionId);
+            // 核心方法  最终会调用到ConnectionBasedClientManager类的clientDisconnected()方法中
             clientConnectionEventListenerRegistry.notifyClientDisConnected(remove);
         }
     }
@@ -245,6 +247,7 @@ public class ConnectionManager {
     public void start() {
         
         initConnectionEjector();
+        // 3s 一次的健康检查
         // Start UnHealthy Connection Expel Task.
         RpcScheduledExecutor.COMMON_SERVER_EXECUTOR.scheduleWithFixedDelay(() -> {
             runtimeConnectionEjector.doEject();

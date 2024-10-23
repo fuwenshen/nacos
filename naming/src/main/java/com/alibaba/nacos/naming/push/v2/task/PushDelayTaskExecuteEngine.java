@@ -100,7 +100,9 @@ public class PushDelayTaskExecuteEngine extends NacosDelayTaskExecuteEngine {
         @Override
         public boolean process(NacosTask task) {
             PushDelayTask pushDelayTask = (PushDelayTask) task;
+            // 取出service对象
             Service service = pushDelayTask.getService();
+            // 从下面的方法名我们就可以看出来这又是异步执行一个task任务，所以我们重点关注new PushExecuteTask()这个类的run()方法
             NamingExecuteTaskDispatcher.getInstance()
                     .dispatchAndExecuteTask(service, new PushExecuteTask(service, executeEngine, pushDelayTask));
             return true;

@@ -155,6 +155,7 @@ public class NacosNamingService implements NamingService {
     public void registerInstance(String serviceName, String groupName, Instance instance) throws NacosException {
         NamingUtils.checkInstanceIsLegal(instance);
         checkAndStripGroupNamePrefix(instance, groupName);
+        // 调用NacosServer端，发送服务注册， Nacos2.X采用的是grpc方式请求，所以这里是去NamingClientProxyDelegate实现类的方法中
         clientProxy.registerService(serviceName, groupName, instance);
     }
     
@@ -332,7 +333,10 @@ public class NacosNamingService implements NamingService {
             boolean subscribe) throws NacosException {
         ServiceInfo serviceInfo;
         if (subscribe) {
+            // 先从本地缓存serviceInfoMap中取
             serviceInfo = serviceInfoHolder.getServiceInfo(serviceName, groupName, clusterString);
+            // 如果本地缓存中没有我们需要的服务实例列表信息，那么就向NacosServer端发送一个grpc请求，进行获取服务实例列表数据
+            // 这里还会开启一个任务，每隔一段时间向Nacos拉取服务实例信息
             if (null == serviceInfo || !clientProxy.isSubscribed(serviceName, groupName, clusterString)) {
                 serviceInfo = clientProxy.subscribe(serviceName, groupName, clusterString);
             }

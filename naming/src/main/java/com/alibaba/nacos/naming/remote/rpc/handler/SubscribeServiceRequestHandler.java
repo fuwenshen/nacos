@@ -75,12 +75,15 @@ public class SubscribeServiceRequestHandler extends RequestHandler<SubscribeServ
         String app = RequestContextHolder.getContext().getBasicContext().getApp();
         String groupedServiceName = NamingUtils.getGroupedName(serviceName, groupName);
         Service service = Service.newService(namespaceId, groupName, serviceName, true);
+        //  创建一个Subscriber对象，其中存放订阅方的ip信息，以及订阅哪一个service的信息
         Subscriber subscriber = new Subscriber(meta.getClientIp(), meta.getClientVersion(), app, meta.getClientIp(),
                 namespaceId, groupedServiceName, 0, request.getClusters());
+        // 响应给客户端的数据，核心方法就是getData(service)
         ServiceInfo serviceInfo = ServiceUtil.selectInstancesWithHealthyProtection(serviceStorage.getData(service),
                 metadataManager.getServiceMetadata(service).orElse(null), subscriber.getCluster(), false, true,
                 subscriber.getIp());
         if (request.isSubscribe()) {
+            // 订阅的逻辑
             clientOperationService.subscribeService(service, subscriber, meta.getConnectionId());
             NotifyCenter.publishEvent(new SubscribeServiceTraceEvent(System.currentTimeMillis(),
                     NamingRequestUtil.getSourceIpForGrpcRequest(meta), service.getNamespace(), service.getGroup(),

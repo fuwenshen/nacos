@@ -55,19 +55,26 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
     @Override
     public void registerInstance(Service service, Instance instance, String clientId) throws NacosException {
         NamingUtils.checkInstanceIsLegal(instance);
-    
+        // 把service存入singletonRepository集合 如果不存在的前提下，并存入namespaceSingletonMaps集合中该服务命名空间对应的set集合中
         Service singleton = ServiceManager.getInstance().getSingleton(service);
         if (!singleton.isEphemeral()) {
             throw new NacosRuntimeException(NacosException.INVALID_PARAM,
                     String.format("Current service %s is persistent service, can't register ephemeral instance.",
                             singleton.getGroupedServiceName()));
         }
+        // clientId就是NacosClient发送请求时传递的一个connectionId 。client对象存放的就是NacosClient客户端相关的信息
+        // 对于临时实例来说，getClient()就是从clients集合中取，返回的是IpPortBasedClient对象
+        // 客户端与服务端建立连接之后，服务端就会生成一个Client对象，服务端会通过客户端传过来的connectionId来找到对应的Client对象
         Client client = clientManager.getClient(clientId);
         checkClientIsLegal(client, clientId);
+        // 把客户端封装的instance对象 转换为 服务端这边的instance对象
         InstancePublishInfo instanceInfo = getPublishInfo(instance);
+        // 将service以及instanceInfo对象保存至 publishers <Service, InstancePublishInfo>  这个Map集合中
+        // 同时发布一个ClientChangedEvent事件
         client.addServiceInstance(singleton, instanceInfo);
         client.setLastUpdatedTime();
         client.recalculateRevision();
+        // 再发布两个事件ClientRegisterServiceEvent、InstanceMetadataEvent
         NotifyCenter.publishEvent(new ClientOperationEvent.ClientRegisterServiceEvent(singleton, clientId));
         NotifyCenter
                 .publishEvent(new MetadataEvent.InstanceMetadataEvent(singleton, instanceInfo.getMetadataId(), false));
@@ -119,11 +126,15 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
     
     @Override
     public void subscribeService(Service service, Subscriber subscriber, String clientId) {
+        // 被订阅方
         Service singleton = ServiceManager.getInstance().getSingletonIfExist(service).orElse(service);
+        // 获取Client，是订阅方
         Client client = clientManager.getClient(clientId);
         checkClientIsLegal(client, clientId);
+        // 将service和subscriber 保存在Client对象中的subscribers <Service, Subscriber> 集合中
         client.addServiceSubscriber(singleton, subscriber);
         client.setLastUpdatedTime();
+        // 发布事件
         NotifyCenter.publishEvent(new ClientOperationEvent.ClientSubscribeServiceEvent(singleton, clientId));
     }
     

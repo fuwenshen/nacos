@@ -56,9 +56,14 @@ public class InstanceRequestHandler extends RequestHandler<InstanceRequest, Inst
     @Secured(action = ActionTypes.WRITE)
     @ExtractorManager.Extractor(rpcExtractor = InstanceRequestParamExtractor.class)
     public InstanceResponse handle(InstanceRequest request, RequestMeta meta) throws NacosException {
+        // 创建一个service对象，这里和Nacos1.X有一些小变动，
+        // Nacos1.X的Service对象中能同时保存持久化实例和非持久化实例集合
+        // Nacos2.X的Service对象只能保存一种了，要么该service对应持久化实例，要么就对应非持久化实例
         Service service = Service.newService(request.getNamespace(), request.getGroupName(), request.getServiceName(),
                 true);
         InstanceUtil.setInstanceIdIfEmpty(request.getInstance(), service.getGroupedServiceName());
+
+        // 判断请求类型，是注册实例还是注销实例，进而调用对应的方法
         switch (request.getType()) {
             case NamingRemoteConstants.REGISTER_INSTANCE:
                 return registerInstance(service, request, meta);

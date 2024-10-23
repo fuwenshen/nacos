@@ -189,17 +189,21 @@ public class ServiceInfoUpdateService implements Closeable {
                     isCancel = true;
                     return;
                 }
-                
+
+                // 从本地缓存中取，如果取不到那么就会通过queryInstancesOfService()方法去向NacosServer端发送请求查询服务实例列表
                 ServiceInfo serviceObj = serviceInfoHolder.getServiceInfoMap().get(serviceKey);
                 if (serviceObj == null) {
                     serviceObj = namingClientProxy.queryInstancesOfService(serviceName, groupName, clusters, false);
+                    // 将结果保存本地缓存
                     serviceInfoHolder.processServiceInfo(serviceObj);
                     // TODO multiple time can be configured.
                     delayTime = serviceObj.getCacheMillis() * DEFAULT_UPDATE_CACHE_TIME_MULTIPLE;
                     lastRefTime = serviceObj.getLastRefTime();
                     return;
                 }
-                
+                // 如果本地缓存中的ServiceInfo对象的lastRefTime属性 小于等于了 lastRefTime也要发送请求
+                // 所以大部分情况下 下面的if都会满足，因为每一次发送获取服务实例列表的请求后都会更新lastRefTime的值，下一次执行该任务这个就会相等
+                // 那么就又要继续发送请求
                 if (serviceObj.getLastRefTime() <= lastRefTime) {
                     serviceObj = namingClientProxy.queryInstancesOfService(serviceName, groupName, clusters, false);
                     serviceInfoHolder.processServiceInfo(serviceObj);
@@ -211,6 +215,7 @@ public class ServiceInfoUpdateService implements Closeable {
                 }
                 // TODO multiple time can be configured.
                 delayTime = serviceObj.getCacheMillis() * DEFAULT_UPDATE_CACHE_TIME_MULTIPLE;
+                // 重置失败次数
                 resetFailCount();
             } catch (NacosException e) {
                 handleNacosException(e);
@@ -218,6 +223,7 @@ public class ServiceInfoUpdateService implements Closeable {
                 handleUnknownException(e);
             } finally {
                 if (!isCancel) {
+                    // 嵌套调用自己，6s <= 间隔时间 <= 60s，间隔时间和失败次数有关
                     executor.schedule(this, Math.min(delayTime << failCount, DEFAULT_DELAY * 60),
                             TimeUnit.MILLISECONDS);
                 }

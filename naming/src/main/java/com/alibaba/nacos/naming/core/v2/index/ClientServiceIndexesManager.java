@@ -44,9 +44,9 @@ import java.util.concurrent.ConcurrentMap;
  */
 @Component
 public class ClientServiceIndexesManager extends SmartSubscriber {
-    
+    //publisherIndexes集合保证了service和多个instance之间的对应关系
     private final ConcurrentMap<Service, Set<String>> publisherIndexes = new ConcurrentHashMap<>();
-    
+    // subscriberIndexes 存储了service 多个client 订阅的关系
     private final ConcurrentMap<Service, Set<String>> subscriberIndexes = new ConcurrentHashMap<>();
     
     public ClientServiceIndexesManager() {
@@ -89,9 +89,11 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     
     @Override
     public void onEvent(Event event) {
+        // 根据两类事件去调用对应的方法，再进行更细致的判断
         if (event instanceof ClientOperationEvent.ClientReleaseEvent) {
             handleClientDisconnect((ClientOperationEvent.ClientReleaseEvent) event);
         } else if (event instanceof ClientOperationEvent) {
+            // 注册服务、注销服务、订阅服务、取消订阅，相关的事件
             handleClientOperation((ClientOperationEvent) event);
         }
     }
@@ -117,17 +119,22 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
         Service service = event.getService();
         String clientId = event.getClientId();
         if (event instanceof ClientOperationEvent.ClientRegisterServiceEvent) {
+            // 注册服务
             addPublisherIndexes(service, clientId);
         } else if (event instanceof ClientOperationEvent.ClientDeregisterServiceEvent) {
+            // 注销服务
             removePublisherIndexes(service, clientId);
         } else if (event instanceof ClientOperationEvent.ClientSubscribeServiceEvent) {
+            // 订阅服务
             addSubscriberIndexes(service, clientId);
         } else if (event instanceof ClientOperationEvent.ClientUnsubscribeServiceEvent) {
+            // 取消订阅
             removeSubscriberIndexes(service, clientId);
         }
     }
     
     private void addPublisherIndexes(Service service, String clientId) {
+        // 将service和client id存入publisherIndexes<Service, Set<clientId>>集合中
         publisherIndexes.computeIfAbsent(service, key -> new ConcurrentHashSet<>()).add(clientId);
         NotifyCenter.publishEvent(new ServiceEvent.ServiceChangedEvent(service, true));
     }
@@ -141,9 +148,11 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     }
     
     private void addSubscriberIndexes(Service service, String clientId) {
+        //把这个service和多个订阅方进行绑定
         Set<String> clientIds = subscriberIndexes.computeIfAbsent(service, key -> new ConcurrentHashSet<>());
         // Fix #5404, Only first time add need notify event.
         if (clientIds.add(clientId)) {
+            // 发布事件
             NotifyCenter.publishEvent(new ServiceEvent.ServiceSubscribedEvent(service, clientId));
         }
     }

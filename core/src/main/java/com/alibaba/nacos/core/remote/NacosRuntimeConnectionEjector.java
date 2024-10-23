@@ -71,8 +71,10 @@ public class NacosRuntimeConnectionEjector extends RuntimeConnectionEjector {
             Set<String> outDatedConnections = new HashSet<>();
             long now = System.currentTimeMillis();
             //outdated connections collect.
+            // 遍历所有的connection连接对象集合
             for (Map.Entry<String, Connection> entry : connections.entrySet()) {
                 Connection client = entry.getValue();
+                // 当前时间 - client的lastActiveTime时间 >= 20s
                 if (now - client.getMetaInfo().getLastActiveTime() >= KEEP_ALIVE_TIME) {
                     outDatedConnections.add(client.getMetaInfo().getConnectionId());
                 } else if (client.getMetaInfo().pushQueueBlockTimesLastOver(300 * 1000)) {
@@ -81,6 +83,7 @@ public class NacosRuntimeConnectionEjector extends RuntimeConnectionEjector {
             }
             
             // check out date connection
+            // 探活机制，遍历超时连接对象，对各个超时连接对象发送一个async请求，再将能正常响应的连接添加进successConnections集合中
             Loggers.CONNECTION.info("Out dated connection ,size={}", outDatedConnections.size());
             if (CollectionUtils.isNotEmpty(outDatedConnections)) {
                 Set<String> successConnections = new HashSet<>();
@@ -132,10 +135,14 @@ public class NacosRuntimeConnectionEjector extends RuntimeConnectionEjector {
                 
                 latch.await(5000L, TimeUnit.MILLISECONDS);
                 Loggers.CONNECTION.info("Out dated connection check successCount={}", successConnections.size());
-                
+
+                // 在outDatedConnections集合中，且不在successConnections集合中的超时连接id就会去调用unregister()进行注销
                 for (String outDateConnectionId : outDatedConnections) {
                     if (!successConnections.contains(outDateConnectionId)) {
                         Loggers.CONNECTION.info("[{}]Unregister Out dated connection....", outDateConnectionId);
+                        // 1. 将连接中connections集合中移除，将clientId从clients集合中删除
+                        // 2.发布事件
+                        // 处理事件中会删除注册表和订阅表中的信息、数据同步至其他节点
                         connectionManager.unregister(outDateConnectionId);
                     }
                 }

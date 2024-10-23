@@ -98,6 +98,7 @@ public class ConnectionBasedClientManager extends ClientConnectionEventListener 
     @Override
     public boolean clientDisconnected(String clientId) {
         Loggers.SRV_LOG.info("Client connection {} disconnect, remove instances and subscribers", clientId);
+        // clientId从clients集合中移除
         ConnectionBasedClient client = clients.remove(clientId);
         if (null == client) {
             return true;
@@ -105,6 +106,8 @@ public class ConnectionBasedClientManager extends ClientConnectionEventListener 
         client.release();
         boolean isResponsible = isResponsibleClient(client);
         NotifyCenter.publishEvent(new ClientOperationEvent.ClientReleaseEvent(client, isResponsible));
+        // 发布ClientDisconnectEvent事件
+        // 处理事件中会删除注册表和订阅表中的信息、数据同步至其他节点
         NotifyCenter.publishEvent(new ClientEvent.ClientDisconnectEvent(client, isResponsible));
         return true;
     }

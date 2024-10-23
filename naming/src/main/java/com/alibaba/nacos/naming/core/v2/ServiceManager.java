@@ -34,9 +34,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ServiceManager {
     
     private static final ServiceManager INSTANCE = new ServiceManager();
-    
+    // 专门存放service
     private final ConcurrentHashMap<Service, Service> singletonRepository;
-    
+    // 一个命名空间下所有的service
     private final ConcurrentHashMap<String, Set<Service>> namespaceSingletonMaps;
     
     private ServiceManager() {
